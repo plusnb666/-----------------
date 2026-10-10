@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "运行当前 CNN-LSTM 实验",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "C:\\Users\\nbplus\\miniconda3\\envs\\transfer-power\\python.exe",
+            "module": "实验代码.panama2tetouan_region1.CNN_LSTM_predict",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "PYTHONIOENCODING": "utf-8"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

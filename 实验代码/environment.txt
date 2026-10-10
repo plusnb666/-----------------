@@ -1,0 +1,9 @@
+matplotlib	3.10.0	
+numpy	2.2.2	
+pandas	2.2.3	
+pillow	11.1.0	
+pip	25.0	
+python	3.10.16	
+scikit-learn	1.6.1		
+torch	2.6.0+cu126
+wheel	0.45.1	

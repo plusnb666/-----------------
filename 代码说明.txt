@@ -1,0 +1,22 @@
+首先去了解和学习迁移学习的基本知识和概念。
+
+dealt_data文件夹里的文件包含四个不同区域的负载数据，我们把tetouan区域1的数据模拟为缺乏数据的目标域，其他三个区域的数据作为数据充足的源域，将源域数据的知识迁移到目标域上去。
+
+typical_models.py里是一些常用经典的深度学习模型，promising_models里是一些比较新的模型，都作为工具包等待被预测文件调用。
+
+power_dataset是处理负载数据、加载数据集的文件。
+
+panama2tetouan_region1即为将巴拿马负载数据当做源域，将其知识迁移到得土安区域1的负荷预测任务中。里面的.py文件为不同的深度学习模型进行迁移预测。其他两个文件夹同理。
+
+上面都是基于样本、基于模型的迁移学习。还有一种基于特征的迁移学习，文件中提供了DANN_mnsit_m文件夹，利用领域对抗网络对手写数字识别任务进行迁移学习，作为扩展补充实验，可扩展至负荷预测任务中。
+
+运行环境：
+使用 conda 环境 transfer-power（Python 3.10.16、PyTorch 2.6.0+cu126）。
+在项目根目录打开 PowerShell 后运行：
+conda activate transfer-power
+python -m 实验代码.panama2tetouan_region1.CNN_LSTM_predict
+
+数据集路径会自动从实验代码\dealt_data文件夹读取，不再依赖原作者电脑上的绝对路径。
+也可以在 VS Code 中按 F5 使用“运行当前 CNN-LSTM 实验”启动配置运行，该配置已固定使用 transfer-power 解释器，无需手动选择。
+
+VS Code 解释器确认方法：打开任意 .py 文件，点击右下角状态栏显示的 Python 版本，或在命令面板（Ctrl+Shift+P）执行 Python: Select Interpreter，选择 transfer-power。
