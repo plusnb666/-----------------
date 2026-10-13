@@ -1,4 +1,10 @@
-#2024.11.5 原始的带解码器和编码器的Informer
+"""带编码器和解码器的 Informer 模型。
+
+Informer 面向长序列预测，使用 ProbSparse Attention 降低标准全注意力的
+计算开销，并可通过蒸馏卷积逐层压缩序列。该变体保留完整的 Encoder-Decoder
+结构，适合输出多个未来时间步，当前项目也可配置为单步预测。
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,6 +17,13 @@ from Informer_models.embed import DataEmbedding
 
 
 class Informer_1(nn.Module):
+    """原始 Encoder-Decoder Informer。
+
+    输入编码器历史序列 ``x_enc`` 和解码器输入 ``x_dec``，同时接收对应的
+    时间特征 ``x_mark_enc``、``x_mark_dec``。输出为最后 ``out_len`` 个
+    时间步的预测；当开启 ``output_attention`` 时，同时返回编码器注意力。
+    """
+
     def __init__(self, enc_in, dec_in, c_out, seq_len, label_len, out_len,
                  factor=4, d_model=64, n_heads=4, e_layers=1, d_layers=1, d_ff=128,
                  dropout=0.0, attn='prob', embed='fixed', freq='h', activation='relu',
@@ -68,6 +81,7 @@ class Informer_1(nn.Module):
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
+        """完成值/时间嵌入、编码器建模、解码器交叉注意力和投影。"""
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
 
@@ -81,7 +95,7 @@ class Informer_1(nn.Module):
         if self.output_attention:
             return dec_out, attns
         else:
-            return dec_out  # [B, L, D]
+            return dec_out  # [B * out_len, 1]
 
 
 def main():

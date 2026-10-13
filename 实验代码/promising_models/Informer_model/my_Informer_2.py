@@ -1,4 +1,9 @@
-#2024.11.6 只带Encoder的Informer
+"""Encoder-only Informer 模型。
+
+该变体移除了原始 Informer 的解码器，仅使用历史窗口的编码结果通过两层
+线性投影得到预测。结构更轻、参数更少，适合数据量有限或单步预测场景。
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,6 +15,15 @@ from Informer_models.embed import DataEmbedding
 
 
 class Informer_2(nn.Module):
+    """仅含编码器的 Informer 回归模型。
+
+    输入：``x_enc`` 为 ``[B, T, enc_in]``，``x_mark_enc`` 为时间特征。
+    输出：``out_len=1`` 时为 ``[B, c_out]``；多步预测时为
+    ``[B, out_len, c_out]``。
+    适用范围：希望使用 ProbSparse Attention 建模较长历史、但不需要完整
+    自回归解码器的负荷预测任务。
+    """
+
     def __init__(self, enc_in, d_hidden, c_out, seq_len, label_len, out_len,
                  factor=4, d_model=64, n_heads=4, e_layers=1, d_ff=128,
                  dropout=0.0,
@@ -46,6 +60,7 @@ class Informer_2(nn.Module):
         self.projection2 = nn.Linear(d_hidden, c_out, bias=True)
 
     def forward(self, x_enc, x_mark_enc, enc_self_mask=None):
+        """编码输入序列并取末端时间步作为预测表示。"""
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
         enc_out = self.projection1(enc_out)

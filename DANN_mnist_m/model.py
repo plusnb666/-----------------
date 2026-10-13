@@ -2,7 +2,21 @@ import torch.nn as nn
 from functions import ReverseLayerF
 
 
+"""DANN 的 CNN 特征提取器、类别分类器和领域分类器。
+
+模型同时优化两个目标：源域标签分类损失，以及源域/目标域领域分类
+损失。领域分类器前接梯度反转层，使共享特征逐渐变得领域不可区分。
+"""
+
+
 class CNNModel(nn.Module):
+    """用于 MNIST → MNIST-M 的领域对抗卷积网络。
+
+    输入：单通道或可扩展为三通道的 ``28x28`` 图像。
+    输出：类别对数概率、领域对数概率和共享特征向量。
+    适用范围：源域与目标域标签空间一致、但图像风格或分布不同的领域
+    自适应任务。
+    """
 
     def __init__(self):
         super(CNNModel, self).__init__()
@@ -36,6 +50,7 @@ class CNNModel(nn.Module):
         self.domain_classifier.add_module('d_softmax', nn.LogSoftmax(dim=1))
 
     def forward(self, input_data, alpha):
+        """提取共享特征，同时输出类别和领域预测。"""
         input_data = input_data.expand(input_data.data.shape[0], 3, 28, 28)
         feature = self.feature(input_data)
         feature = feature.view(-1, 50 * 4 * 4)

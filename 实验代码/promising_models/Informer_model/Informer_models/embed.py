@@ -4,7 +4,17 @@ import torch.nn.functional as F
 
 import math
 
+
+"""Informer 的值嵌入、位置嵌入和时间特征嵌入。
+
+Informer 将原始数值、序列位置以及日历时间编码相加，使注意力层既能
+访问负荷数值，也能利用小时、星期、月份等周期信息。
+"""
+
+
 class PositionalEmbedding(nn.Module):
+    """固定正弦-余弦位置编码。"""
+
     def __init__(self, d_model, max_len=5000):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
@@ -21,9 +31,12 @@ class PositionalEmbedding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x):
+        """返回与输入序列长度匹配的位置编码。"""
         return self.pe[:, :x.size(1)]
 
 class TokenEmbedding(nn.Module):
+    """用 circular padding 的一维卷积嵌入连续数值特征。"""
+
     def __init__(self, c_in, d_model):
         super(TokenEmbedding, self).__init__()
         padding = 1 if torch.__version__>='1.5.0' else 2
@@ -34,10 +47,13 @@ class TokenEmbedding(nn.Module):
                 nn.init.kaiming_normal_(m.weight,mode='fan_in',nonlinearity='leaky_relu')
 
     def forward(self, x):
+        """将 ``[B, T, C]`` 映射为 ``[B, T, d_model]``。"""
         x = self.tokenConv(x.permute(0, 2, 1)).transpose(1,2)
         return x
 
 class FixedEmbedding(nn.Module):
+    """固定的离散索引嵌入，用于日历字段等离散时间特征。"""
+
     def __init__(self, c_in, d_model):
         super(FixedEmbedding, self).__init__()
 
@@ -54,9 +70,12 @@ class FixedEmbedding(nn.Module):
         self.emb.weight = nn.Parameter(w, requires_grad=False)
 
     def forward(self, x):
+        """查表并阻断梯度，使该嵌入保持固定。"""
         return self.emb(x).detach()
 
 class TemporalEmbedding(nn.Module):
+    """将月份、日期、星期、小时和可选分钟编码相加。"""
+
     def __init__(self, d_model, embed_type='fixed', freq='h'):
         super(TemporalEmbedding, self).__init__()
 
@@ -72,6 +91,7 @@ class TemporalEmbedding(nn.Module):
         self.month_embed = Embed(month_size, d_model)
     
     def forward(self, x):
+        """把整数日历字段映射为 ``[B, T, d_model]``。"""
         x = x.long()
         
         minute_x = self.minute_embed(x[:,:,4]) if hasattr(self, 'minute_embed') else 0.
@@ -83,6 +103,8 @@ class TemporalEmbedding(nn.Module):
         return hour_x + weekday_x + day_x + month_x + minute_x
 
 class TimeFeatureEmbedding(nn.Module):
+    """把连续归一化时间特征线性映射到模型维度。"""
+
     def __init__(self, d_model, embed_type='timeF', freq='h'):
         super(TimeFeatureEmbedding, self).__init__()
 
@@ -91,9 +113,15 @@ class TimeFeatureEmbedding(nn.Module):
         self.embed = nn.Linear(d_inp, d_model)
     
     def forward(self, x):
+        """对每个时间步的时间特征执行线性投影。"""
         return self.embed(x)
 
 class DataEmbedding(nn.Module):
+    """Informer 输入嵌入总层。
+
+    最终表示等于值嵌入、位置嵌入和时间嵌入之和，再经过 Dropout。
+    """
+
     def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1):
         super(DataEmbedding, self).__init__()
 
@@ -104,6 +132,7 @@ class DataEmbedding(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, x_mark):
+        """融合数值序列和时间标记。"""
         x = self.value_embedding(x) + self.position_embedding(x) + self.temporal_embedding(x_mark)
         
         return self.dropout(x)

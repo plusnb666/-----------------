@@ -7,7 +7,18 @@ import numpy as np
 from math import sqrt
 from utils.masking import TriangularCausalMask, ProbMask
 
+
+"""Informer 的注意力实现。
+
+包含标准全注意力（FullAttention）、ProbSparse 注意力（ProbAttention）
+以及多头投影封装层。ProbSparse 通过采样估计查询的重要性，只对最具
+稀疏性的查询计算完整注意力，从而降低长序列预测的计算量。
+"""
+
+
 class FullAttention(nn.Module):
+    """标准缩放点积注意力。"""
+
     def __init__(self, mask_flag=True, factor=5, scale=None, attention_dropout=0.1, output_attention=False):
         super(FullAttention, self).__init__()
         self.scale = scale
@@ -16,6 +27,11 @@ class FullAttention(nn.Module):
         self.dropout = nn.Dropout(attention_dropout)
         
     def forward(self, queries, keys, values, attn_mask):
+        """计算 ``softmax(QK^T / sqrt(d))V``。
+
+        输入在内部使用 ``[B, L, H, E]`` 表示，其中 H 是头数，E 是每个
+        头的查询/键维度；返回同样按多头组织的上下文表示。
+        """
         B, L, H, E = queries.shape
         _, S, _, D = values.shape
         scale = self.scale or 1./sqrt(E)
@@ -36,6 +52,12 @@ class FullAttention(nn.Module):
             return (V.contiguous(), None)
 
 class ProbAttention(nn.Module):
+    """Informer 的 ProbSparse 注意力。
+
+    先随机采样键估计每个查询的稀疏性，再选择最重要的查询进行完整
+    ``QK^T`` 计算；未选中的位置使用均值或累积上下文初始化。
+    """
+
     def __init__(self, mask_flag=True, factor=5, scale=None, attention_dropout=0.1, output_attention=False):
         super(ProbAttention, self).__init__()
         self.factor = factor
@@ -45,6 +67,7 @@ class ProbAttention(nn.Module):
         self.dropout = nn.Dropout(attention_dropout)
 
     def _prob_QK(self, Q, K, sample_k, n_top): # n_top: c*ln(L_q)
+        """采样键并选出稀疏性最高的查询。"""
         # Q [B, H, L, D]
         B, H, L_K, E = K.shape
         _, _, L_Q, _ = Q.shape
@@ -68,6 +91,7 @@ class ProbAttention(nn.Module):
         return Q_K, M_top
 
     def _get_initial_context(self, V, L_Q):
+        """为所有查询位置构造注意力上下文的初始值。"""
         B, H, L_V, D = V.shape
         if not self.mask_flag:
             # V_sum = V.sum(dim=-2)
@@ -79,6 +103,7 @@ class ProbAttention(nn.Module):
         return contex
 
     def _update_context(self, context_in, V, scores, index, L_Q, attn_mask):
+        """用重要查询的注意力结果更新上下文。"""
         B, H, L_V, D = V.shape
 
         if self.mask_flag:
@@ -98,6 +123,7 @@ class ProbAttention(nn.Module):
             return (context_in, None)
 
     def forward(self, queries, keys, values, attn_mask):
+        """执行 ProbSparse 注意力并恢复多头张量布局。"""
         B, L_Q, H, D = queries.shape
         _, L_K, _, _ = keys.shape
 
@@ -126,6 +152,8 @@ class ProbAttention(nn.Module):
 
 
 class AttentionLayer(nn.Module):
+    """将输入投影为多头 Q/K/V，并调用具体注意力实现。"""
+
     def __init__(self, attention, d_model, n_heads, 
                  d_keys=None, d_values=None, mix=False):
         super(AttentionLayer, self).__init__()
@@ -142,6 +170,7 @@ class AttentionLayer(nn.Module):
         self.mix = mix
 
     def forward(self, queries, keys, values, attn_mask):
+        """完成多头投影、注意力计算和输出投影。"""
         B, L, _ = queries.shape
         _, S, _ = keys.shape
         H = self.n_heads

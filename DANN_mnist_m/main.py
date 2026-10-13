@@ -14,7 +14,17 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from feature_visualization import visualize_features
 
+
+"""MNIST 到 MNIST-M 的领域对抗训练入口。
+
+训练时源域使用真实数字标签，目标域只参与领域判别；梯度反转层让共享
+特征同时具有类别判别性和领域不变性。该实验是本项目中基于特征的迁移
+学习补充案例，可作为将 DANN 扩展到负荷预测的参考。
+"""
+
+
 def main():
+    """加载源域/目标域数据，训练 DANN 并评估目标域准确率。"""
 
     source_dataset_name = 'MNIST'
     target_dataset_name = 'mnist_m'
@@ -32,7 +42,7 @@ def main():
     random.seed(manual_seed)
     torch.manual_seed(manual_seed)
 
-    # load data
+    # 加载源域 MNIST 和目标域 MNIST-M，并为两个域设置各自归一化方式。
 
     img_transform_source = transforms.Compose([
         transforms.Resize(image_size),
@@ -73,11 +83,11 @@ def main():
         shuffle=True,
         num_workers=8)
 
-    # load model
+    # 共享 CNN 特征提取器 + 类别分类器 + 领域分类器。
 
     my_net = CNNModel()
 
-    # setup optimizer
+    # 两个域的分类损失与源域标签损失共同反向传播。
 
     optimizer = optim.Adam(my_net.parameters(), lr=lr)
 
@@ -92,7 +102,7 @@ def main():
     for p in my_net.parameters():
         p.requires_grad = True
 
-    # training
+    # alpha 从接近 0 逐步增加，使领域对抗约束平滑加入训练过程。
     best_accu_t = 0.0
 
     s_feature_list = []
@@ -110,7 +120,7 @@ def main():
             alpha = 2. / (1. + np.exp(-10 * p)) - 1
             # alpha = 0
 
-            # training model using source data
+            # 源域：同时计算数字类别损失和“源域”领域损失。
             data_source = next(data_source_iter)
             s_img, s_label = data_source
 
@@ -129,7 +139,7 @@ def main():
             err_s_label = loss_class(class_output, s_label)
             err_s_domain = loss_domain(domain_output, domain_label)
 
-            # training model using target data
+            # 目标域：没有类别标签，只计算“目标域”领域损失。
             data_target = next(data_target_iter)
             t_img, _ = data_target
 
@@ -175,7 +185,7 @@ def main():
     s_feature_list = np.concatenate(s_feature_list, axis=0)
     t_feature_list = np.concatenate(t_feature_list, axis=0)
 
-    #两个列表都每隔100个点取一个
+    # 为降低 t-SNE 可视化开销，源域和目标域特征每隔 100 个样本抽取一个。
     s_feature_list = s_feature_list[::100]
     t_feature_list = t_feature_list[::100]
 

@@ -1,7 +1,16 @@
 import numpy as np
 import torch
 
+
+"""Informer 训练辅助工具。
+
+提供学习率衰减、早停、字典属性访问和标准化等通用组件；这些工具本身
+不改变模型结构，主要服务于训练和验证流程。
+"""
+
+
 def adjust_learning_rate(optimizer, epoch, args):
+    """根据配置在指定 epoch 更新优化器学习率。"""
     # lr = args.learning_rate * (0.2 ** (epoch // 2))
     if args.lradj=='type1':
         lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch-1) // 1))}
@@ -17,6 +26,8 @@ def adjust_learning_rate(optimizer, epoch, args):
         print('Updating learning rate to {}'.format(lr))
 
 class EarlyStopping:
+    """验证集损失长期不下降时停止训练并保存最佳权重。"""
+
     def __init__(self, patience=7, verbose=False, delta=0):
         self.patience = patience
         self.verbose = verbose
@@ -27,6 +38,7 @@ class EarlyStopping:
         self.delta = delta
 
     def __call__(self, val_loss, model, path):
+        """记录本轮验证损失并决定是否保存或触发早停。"""
         score = -val_loss
         if self.best_score is None:
             self.best_score = score
@@ -42,32 +54,38 @@ class EarlyStopping:
             self.counter = 0
 
     def save_checkpoint(self, val_loss, model, path):
+        """把当前模型参数保存到 ``checkpoint.pth``。"""
         if self.verbose:
             print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         torch.save(model.state_dict(), path+'/'+'checkpoint.pth')
         self.val_loss_min = val_loss
 
 class dotdict(dict):
-    """dot.notation access to dictionary attributes"""
+    """允许通过 ``args.name`` 访问字典中的配置项。"""
     __getattr__ = dict.get
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
 class StandardScaler():
+    """按特征计算均值和标准差的简单标准化器。"""
+
     def __init__(self):
         self.mean = 0.
         self.std = 1.
     
     def fit(self, data):
+        """记录每个特征的均值和标准差。"""
         self.mean = data.mean(0)
         self.std = data.std(0)
 
     def transform(self, data):
+        """将数据转换为零均值、单位尺度。"""
         mean = torch.from_numpy(self.mean).type_as(data).to(data.device) if torch.is_tensor(data) else self.mean
         std = torch.from_numpy(self.std).type_as(data).to(data.device) if torch.is_tensor(data) else self.std
         return (data - mean) / std
 
     def inverse_transform(self, data):
+        """把标准化后的数据还原到原始尺度。"""
         mean = torch.from_numpy(self.mean).type_as(data).to(data.device) if torch.is_tensor(data) else self.mean
         std = torch.from_numpy(self.std).type_as(data).to(data.device) if torch.is_tensor(data) else self.std
         if data.shape[-1] != mean.shape[-1]:

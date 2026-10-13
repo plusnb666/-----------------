@@ -20,3 +20,5 @@ python -m 实验代码.panama2tetouan_region1.CNN_LSTM_predict
 也可以在 VS Code 中按 F5 使用“运行当前 CNN-LSTM 实验”启动配置运行，该配置已固定使用 transfer-power 解释器，无需手动选择。
 
 VS Code 解释器确认方法：打开任意 .py 文件，点击右下角状态栏显示的 Python 版本，或在命令面板（Ctrl+Shift+P）执行 Python: Select Interpreter，选择 transfer-power。
+
+模型名称、结构原理、输入输出、适用范围和实现注意事项详见 [模型与实验信息汇总.md](模型与实验信息汇总.md)。

@@ -5,7 +5,17 @@ import torch.nn.functional as F
 import math
 
 
+"""项目自定义的 Encoder-only Transformer。
+
+与 ``typical_models.py`` 中直接使用的 Transformer 不同，本实现先用一维
+卷积完成值嵌入，再加入正弦位置编码，最后使用 Transformer Encoder 建模
+时间步之间的全局依赖。模型取最后一个时间步进行单步回归。
+"""
+
+
 class PositionalEncoding(nn.Module):
+    """固定正弦-余弦位置编码，不参与梯度更新。"""
+
     def __init__(self, d_model, dropout=0, max_len=5000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
@@ -23,12 +33,18 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)  # 不需要梯度更新的参数
 
     def forward(self, x):
-        # x 的形状为 (batch_size, sequence_length, d_model)
+        """为 ``[B, T, d_model]`` 表示加入位置信息。"""
         seq_length = x.size(1)  # 获取序列长度
         x = x + self.pe[:, :seq_length, :]  # 添加位置编码
         return self.dropout(x)
 
 class TokenEmbedding(nn.Module):
+    """使用 circular padding 的一维卷积值嵌入层。
+
+    输入为 ``[B, T, C]``，先转为 Conv1d 所需的 ``[B, C, T]``，再转回
+    ``[B, T, d_model]``。循环 padding 可减少窗口边界处的信息断裂。
+    """
+
     def __init__(self, c_in, d_model):
         super(TokenEmbedding, self).__init__()
         padding = 1 if torch.__version__ >= '1.5.0' else 2
@@ -39,11 +55,20 @@ class TokenEmbedding(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='leaky_relu')
 
     def forward(self, x):
+        """将原始特征映射到 Transformer 隐藏维度。"""
         x = self.tokenConv(x.permute(0, 2, 1)).transpose(1, 2)
         return x
 
 
 class my_Transformer(nn.Module):
+    """自定义 Encoder-only Transformer 回归模型。
+
+    输入：``[B, T, input_size]``。
+    输出：``[B, out_size]``。
+    适用范围：需要并行建模远距离依赖、同时希望通过卷积增强局部模式
+    提取的中短期时间序列预测任务。
+    """
+
     def __init__(self, input_size, trans_hidden_size, seq_len, trans_n_heads, trans_n_layers, out_size):
         super(my_Transformer, self).__init__()
         self.input_size = input_size
@@ -61,6 +86,7 @@ class my_Transformer(nn.Module):
         self.fc = nn.Linear(self.trans_hidden_size, self.out_size)
 
     def forward(self, x):
+        """执行值嵌入、位置编码、Transformer 编码和最终回归。"""
         x = self.embedding_layer(x)
         x = self.position_encoder(x)
         x = x.transpose(0, 1)
@@ -90,4 +116,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
