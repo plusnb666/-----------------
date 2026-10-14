@@ -33,26 +33,26 @@ class Linear_Model(nn.Module):
     """
 
     def __init__(self, input_size, out_size, dropout=0.5):
-        super(Linear_Model, self).__init__()
+        super(Linear_Model, self).__init__()  # 初始化父类 nn.Module
 
-        self.input_size = input_size
-        self.out_size = out_size
+        self.input_size = input_size  # 保存展平后的输入特征数量
+        self.out_size = out_size  # 保存模型最终输出的数量
 
-        self.fc1 = nn.Linear(input_size, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, out_size)
-        self.dropout = nn.Dropout(dropout)
-        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(input_size, 128)  # 将输入特征映射为128个隐藏特征
+        self.fc2 = nn.Linear(128, 64)  # 将128个隐藏特征压缩为64个隐藏特征
+        self.fc3 = nn.Linear(64, out_size)  # 将64个隐藏特征映射为最终预测值
+        self.dropout = nn.Dropout(dropout)  # 创建随机丢弃层以减少过拟合
+        self.flatten = nn.Flatten()  # 创建展平层，将多维输入变成一维向量
 
     def forward(self, input):
         """展平历史窗口并输出回归结果。"""
-        tem = self.flatten(input)
-        tem = F.relu(self.fc1(tem))
-        tem = F.relu(self.fc2(tem))
-        # tem = self.dropout(tem)
-        out = self.fc3(tem)
+        tem = self.flatten(input)  # 将输入形状[B,T,F]展平为[B,T*F]
+        tem = F.relu(self.fc1(tem))  # 经过第一层全连接并使用ReLU激活函数
+        tem = F.relu(self.fc2(tem))  # 经过第二层全连接并使用ReLU激活函数
+        # tem = self.dropout(tem)  # 可选：随机丢弃部分特征以减少过拟合
+        out = self.fc3(tem)  # 经过第三层全连接得到最终预测结果
 
-        return out
+        return out  # 返回模型的预测结果
 
 
 class CNN_model(nn.Module):
@@ -69,27 +69,27 @@ class CNN_model(nn.Module):
     """
 
     def __init__(self):
-        super(CNN_model, self).__init__()
+        super(CNN_model, self).__init__()  # 初始化父类 nn.Module
 
-        self.conv1 = nn.Conv2d(1, 32, (3, 1), 1)
-        self.conv2 = nn.Conv2d(32, 64, (1, 3), 1)
-        self.pooling = nn.MaxPool2d((1, 4))
-        self.flat = nn.Flatten()
-        self.fc1 = nn.Linear(64, 32)
-        self.fc2 = nn.Linear(32, 1)
-        self.dropout = nn.Dropout(0.5)
+        self.conv1 = nn.Conv2d(1, 32, (3, 1), 1)  # 使用32个卷积核沿时间方向提取局部模式
+        self.conv2 = nn.Conv2d(32, 64, (1, 3), 1)  # 使用64个卷积核沿特征方向融合局部信息
+        self.pooling = nn.MaxPool2d((1, 4))  # 沿特征方向进行最大池化并压缩数据
+        self.flat = nn.Flatten()  # 将卷积和池化后的特征展平
+        self.fc1 = nn.Linear(64, 32)  # 将64个卷积特征映射为32个隐藏特征
+        self.fc2 = nn.Linear(32, 1)  # 将32个隐藏特征映射为一个预测值
+        self.dropout = nn.Dropout(0.5)  # 创建随机丢弃层以减少过拟合
 
     def forward(self, input):
         """提取局部时空模式并预测下一时刻负荷。"""
-        tem = F.relu(self.conv1(input))
-        tem = F.relu(self.conv2(tem))
-        tem = self.pooling(tem)
-        tem = self.flat(tem)
-        tem = F.relu(self.fc1(tem))
-        # tem = self.dropout(tem)
-        out = self.fc2(tem)
+        tem = F.relu(self.conv1(input))  # 第一层卷积提取局部时间模式并使用ReLU激活
+        tem = F.relu(self.conv2(tem))  # 第二层卷积融合相邻特征并使用ReLU激活
+        tem = self.pooling(tem)  # 保留局部区域中的最大响应并压缩特征尺寸
+        tem = self.flat(tem)  # 将多维特征图展平为全连接层所需的一维特征
+        tem = F.relu(self.fc1(tem))  # 通过第一层全连接并使用ReLU激活
+        # tem = self.dropout(tem)  # 可选：随机丢弃部分特征以减少过拟合
+        out = self.fc2(tem)  # 通过第二层全连接得到最终预测结果
 
-        return out
+        return out  # 返回模型预测值
 
 
 class LSTM_model(nn.Module):
@@ -105,28 +105,28 @@ class LSTM_model(nn.Module):
     """
 
     def __init__(self, feature_num, layer_num, nodes_num, dropout=0.3):
-        super(LSTM_model, self).__init__()
+        super(LSTM_model, self).__init__()  # 初始化父类 nn.Module
 
-        self.feature_num = feature_num
-        self.layer_num = layer_num
-        self.nodes_num = nodes_num
+        self.feature_num = feature_num  # 保存每个时间步的输入特征数量
+        self.layer_num = layer_num  # 保存LSTM堆叠的层数
+        self.nodes_num = nodes_num  # 保存LSTM隐藏状态的特征数量
 
-        self.lstm1 = nn.LSTM(input_size=feature_num, num_layers=layer_num, hidden_size=nodes_num, batch_first=True)
-        self.flat = nn.Flatten()
-        self.fc1 = nn.Linear(nodes_num, 64)
-        self.fc2 = nn.Linear(64, 1)
-        self.dropout = nn.Dropout(dropout)
+        self.lstm1 = nn.LSTM(input_size=feature_num, num_layers=layer_num, hidden_size=nodes_num, batch_first=True)  # 创建按批次优先处理的LSTM
+        self.flat = nn.Flatten()  # 创建展平层以整理最后时间步的隐藏状态
+        self.fc1 = nn.Linear(nodes_num, 64)  # 将LSTM隐藏特征映射为64个隐藏特征
+        self.fc2 = nn.Linear(64, 1)  # 将64个隐藏特征映射为一个预测值
+        self.dropout = nn.Dropout(dropout)  # 创建随机丢弃层以减少过拟合
 
     def forward(self, input):
         """沿时间维递推，并使用最后时间步的隐藏状态回归。"""
-        tem, _ = self.lstm1(input)
-        tem = tem[:, -1, :]
-        tem = self.flat(tem)
-        # tem = self.dropout(tem)
-        tem = F.relu(self.fc1(tem))
-        out = self.fc2(tem)
+        tem, _ = self.lstm1(input)  # 按时间顺序处理输入并得到每个时间步的隐藏状态
+        tem = tem[:, -1, :]  # 取每条样本最后一个时间步的隐藏状态
+        tem = self.flat(tem)  # 将最后时间步的隐藏状态整理为二维特征
+        # tem = self.dropout(tem)  # 可选：随机丢弃部分特征以减少过拟合
+        tem = F.relu(self.fc1(tem))  # 通过第一层全连接并使用ReLU激活
+        out = self.fc2(tem)  # 通过第二层全连接得到最终预测结果
 
-        return out
+        return out  # 返回模型预测值
 
 class GRU_model(nn.Module):
     """门控循环单元（GRU）回归模型。
@@ -141,28 +141,28 @@ class GRU_model(nn.Module):
     """
 
     def __init__(self, feature_num, layer_num, nodes_num, dropout=0.3):
-        super(GRU_model, self).__init__()
+        super(GRU_model, self).__init__()  # 初始化父类 nn.Module
 
-        self.feature_num = feature_num
-        self.layer_num = layer_num
-        self.nodes_num = nodes_num
+        self.feature_num = feature_num  # 保存每个时间步的输入特征数量
+        self.layer_num = layer_num  # 保存GRU堆叠的层数
+        self.nodes_num = nodes_num  # 保存GRU隐藏状态的特征数量
 
-        self.gru1 = nn.GRU(input_size=feature_num, num_layers=layer_num, hidden_size=nodes_num, batch_first=True)
-        self.flat = nn.Flatten()
-        self.fc1 = nn.Linear(nodes_num, 64)
-        self.fc2 = nn.Linear(64, 1)
-        self.dropout = nn.Dropout(dropout)
+        self.gru1 = nn.GRU(input_size=feature_num, num_layers=layer_num, hidden_size=nodes_num, batch_first=True)  # 创建按批次优先处理的GRU
+        self.flat = nn.Flatten()  # 创建展平层以整理最后时间步的隐藏状态
+        self.fc1 = nn.Linear(nodes_num, 64)  # 将GRU隐藏特征映射为64个隐藏特征
+        self.fc2 = nn.Linear(64, 1)  # 将64个隐藏特征映射为一个预测值
+        self.dropout = nn.Dropout(dropout)  # 创建随机丢弃层以减少过拟合
 
     def forward(self, input):
         """沿时间维递推，并使用最后时间步的隐藏状态回归。"""
-        tem, _ = self.gru1(input)
-        tem = tem[:, -1, :]
-        tem = self.flat(tem)
-        # tem = self.dropout(tem)
-        tem = F.relu(self.fc1(tem))
-        out = self.fc2(tem)
+        tem, _ = self.gru1(input)  # 按时间顺序处理输入并得到每个时间步的隐藏状态
+        tem = tem[:, -1, :]  # 取每条样本最后一个时间步的隐藏状态
+        tem = self.flat(tem)  # 将最后时间步的隐藏状态整理为二维特征
+        # tem = self.dropout(tem)  # 可选：随机丢弃部分特征以减少过拟合
+        tem = F.relu(self.fc1(tem))  # 通过第一层全连接并使用ReLU激活
+        out = self.fc2(tem)  # 通过第二层全连接得到最终预测结果
 
-        return out
+        return out  # 返回模型预测值
 
 class CNN_LSTM_model(nn.Module):
     """卷积-长短期记忆网络（CNN-LSTM）。
@@ -178,32 +178,32 @@ class CNN_LSTM_model(nn.Module):
     """
 
     def __init__(self, feature_num, conv_out=64, hidden_size=128, dropout=0.2):
-        super(CNN_LSTM_model, self).__init__()
+        super(CNN_LSTM_model, self).__init__()  # 初始化父类 nn.Module
 
-        self.feature_num = feature_num
+        self.feature_num = feature_num  # 保存每个时间步的输入特征数量
 
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(1, conv_out, kernel_size=(1, feature_num), stride=(1, 1)),
-            nn.ReLU()
+        self.conv1 = nn.Sequential(  # 创建卷积和激活组成的特征提取模块
+            nn.Conv2d(1, conv_out, kernel_size=(1, feature_num), stride=(1, 1)),  # 使用卷积核融合每个时间步的全部特征
+            nn.ReLU()  # 对卷积结果进行非线性变换
         )
 
-        self.lstm3 = nn.LSTM(input_size=conv_out, hidden_size=hidden_size, batch_first=True, bidirectional=False)
-        self.dropout = nn.Dropout(dropout)
-        self.fc1 = nn.Linear(128, 64)
-        self.fc2 = nn.Linear(64, 1)
+        self.lstm3 = nn.LSTM(input_size=conv_out, hidden_size=hidden_size, batch_first=True, bidirectional=False)  # 使用LSTM学习卷积特征的时间依赖
+        self.dropout = nn.Dropout(dropout)  # 创建随机丢弃层以减少过拟合
+        self.fc1 = nn.Linear(128, 64)  # 将LSTM最后状态映射为64个隐藏特征
+        self.fc2 = nn.Linear(64, 1)  # 将64个隐藏特征映射为一个预测值
 
     def forward(self, input):
         """先卷积融合特征，再用 LSTM 汇总时间信息。"""
-        tem = self.conv1(input)
-        tem = tem.squeeze(axis=-1)
-        tem = tem.permute([0, 2, 1])
-        tem, _ = self.lstm3(tem)
-        tem = tem[:, -1, :]  # 取LSTM的最后一个时间步作为输出
-        # tem = self.dropout(tem)
-        tem = F.relu(self.fc1(tem))
-        out = self.fc2(tem)
+        tem = self.conv1(input)  # 用卷积提取并融合每个时间步的局部特征
+        tem = tem.squeeze(axis=-1)  # 删除卷积后长度为1的特征维度
+        tem = tem.permute([0, 2, 1])  # 调整为LSTM需要的[B, T, 特征]形状
+        tem, _ = self.lstm3(tem)  # 按时间顺序处理卷积特征并输出隐藏状态
+        tem = tem[:, -1, :]  # 取LSTM的最后一个时间步作为序列总结
+        # tem = self.dropout(tem)  # 可选：随机丢弃部分特征以减少过拟合
+        tem = F.relu(self.fc1(tem))  # 通过第一层全连接并使用ReLU激活
+        out = self.fc2(tem)  # 通过第二层全连接得到最终预测结果
 
-        return out
+        return out  # 返回模型预测值
 
 
 class Transformer(nn.Module):
@@ -221,32 +221,32 @@ class Transformer(nn.Module):
     """
 
     def __init__(self, feature_size=7, num_layers=3, num_heads=1, dropout=0):
-        super(Transformer, self).__init__()
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=num_heads, dropout=dropout)
-        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)
-        self.decoder = nn.Linear(feature_size * 3, 1)
-        self.flatten = nn.Flatten()
-        self.init_weights()
+        super(Transformer, self).__init__()  # 初始化父类 nn.Module
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=num_heads, dropout=dropout)  # 创建一个Transformer编码层
+        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)  # 堆叠多个编码层形成编码器
+        self.decoder = nn.Linear(feature_size * 3, 1)  # 将展平后的序列特征映射为一个预测值
+        self.flatten = nn.Flatten()  # 创建展平层以整理编码器输出
+        self.init_weights()  # 初始化最终回归层的权重和偏置
 
     def init_weights(self):
         """用较小的均匀分布初始化最终回归层。"""
-        initrange = 0.1
-        self.decoder.bias.data.zero_()
-        self.decoder.weight.data.uniform_(-initrange, initrange)
+        initrange = 0.1  # 设置回归层权重初始化范围
+        self.decoder.bias.data.zero_()  # 将回归层偏置初始化为0
+        self.decoder.weight.data.uniform_(-initrange, initrange)  # 在指定范围内均匀初始化回归层权重
 
     def _generate_square_subsequent_mask(self, sz):
         """生成防止当前位置读取未来信息的上三角因果掩码。"""
-        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-        return mask
+        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)  # 创建禁止读取未来时间步的布尔掩码
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))  # 将禁止位置设为负无穷、允许位置设为0
+        return mask  # 返回Transformer使用的因果掩码
 
     def forward(self, src):
         """执行 Transformer 编码并将序列表示映射到回归值。"""
-        mask = self._generate_square_subsequent_mask(len(src))
-        output = self.transformer_encoder(src, mask)
-        output = self.flatten(output)
-        output = self.decoder(output)
-        return output
+        mask = self._generate_square_subsequent_mask(len(src))  # 根据输入序列长度生成因果掩码
+        output = self.transformer_encoder(src, mask)  # 使用Transformer编码器提取序列依赖
+        output = self.flatten(output)  # 将所有时间步的编码结果展平
+        output = self.decoder(output)  # 将展平后的特征映射为预测值
+        return output  # 返回模型预测值
 
 
 def main():
